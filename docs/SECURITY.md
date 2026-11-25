@@ -1,6 +1,6 @@
 # Security, authorization and privacy
 
-Status: requirements for implementation and release, not claims of current controls. Defaults are product proposals; deployment jurisdiction, contracts and legal obligations require review before public launch. This document does not assert regulatory certification.
+Status updated 2026-11-25: target implementation/release requirements. Backend settings now configure session/CSRF/CORS defaults, production TLS/cookie guards, private DRF defaults and minimized logs; admin/docs are disabled in production. Authentication/privacy workflows, staff MFA and production operations remain pending. See [current boundaries](PHASE_1_IMPLEMENTATION.md). Defaults below remain product proposals; deployment jurisdiction, contracts and legal obligations require review before public launch. This document does not assert regulatory certification.
 
 ## Threat model and trust boundaries
 

@@ -1,6 +1,6 @@
 # Development roadmap and risk register
 
-Status: architecture review only. No phase below has been implemented. Deliver one safe vertical slice at a time; keep application and AI providers independently testable. Estimates assume one experienced full-time engineer with part-time frontend/design/security/domain review; they are effort ranges, not delivery commitments. Rough total is 18–28 engineering weeks plus review/procurement uncertainty.
+Status updated 2026-11-25: architecture documentation exists and the requested Phase 1 backend infrastructure subset is implemented. The original Phase 1 additionally includes frontend, authentication/profile, outbox and privacy workflows, which remain pending; it is not marked fully complete. See [implementation and verification](PHASE_1_IMPLEMENTATION.md). Deliver one safe vertical slice at a time; keep application and AI providers independently testable. Estimates below remain planning ranges for the broader platform, not delivery commitments. Rough total is 18–28 engineering weeks plus review/procurement uncertainty.
 
 ## Phase plan
 
@@ -8,7 +8,7 @@ Each phase requires the automated and manual evidence in [testing strategy](TEST
 
 | Phase | Estimated effort / prerequisites | Deliverables | Acceptance gate |
 | --- | --- | --- | --- |
-| 0. Architecture review | 1 week; current phase | These seven docs; decisions, data lifecycle, API/schema and budgets | Stakeholders review region/retention, initial rubric, corpus license, provider choice and budget; no feature implementation |
+| 0. Architecture review | 1 week; baseline documents delivered | These seven docs; decisions, data lifecycle, API/schema and budgets | Stakeholders review region/retention, initial rubric, corpus license, provider choice and budget |
 | 1. Foundation and identity | 2–3 weeks; phase 0 review | Django/DRF skeleton, custom user, React/TS shell, sessions/CSRF, verification/reset, profile, local Compose, migrations, OpenAPI, CI, fake providers, outbox/jobs, minimal privacy lifecycle | Clean-machine setup works; isolated PostgreSQL tests; auth/revocation/CSRF and cross-user tests pass; typed client builds; committed intent survives broker outage; secret scan clean |
 | 2. Resume/JD analysis and gaps | 2–3 weeks; phase 1 | Secure upload/quarantine/parser, immutable versions, NLP taxonomy/evidence, configured LLM extraction, JD and gap reports, correction review UI | Malicious/oversized/encrypted input rejected safely; evidence spans round-trip; held-out extraction thresholds pass; user can inspect/correct; source deletion removes private derivatives; hosted consent enforced |
 | 3. Grounded text interview MVP | 4–5 weeks; phases 1–2 | Curated corpus/rubric/resource administration, embeddings/retrieval, session state machine, text answers, basic bounded adaptive policy/follow-ups, structured evaluations and summary | All four interview categories work; 5–20-turn and follow-up caps hold; technical citations/abstentions valid; no answer leaks before completion; concurrency/retry tests pass; gold-set scoring and grounding gates pass; text SLO measured |
@@ -32,7 +32,7 @@ Phase 1 includes minimal export/delete plumbing; each subsequent phase extends t
 | Assessment meaning | Formative coaching, versioned category rubrics | Avoid unsupported employability claims |
 | Availability | Pilot single-region, limited redundancy; harden before general release | Explicit reliability/cost limits |
 
-No request for credentials, purchases, deployments or feature implementation is part of the current documentation task. Resolve review decisions in an architecture revision before beginning phase 1.
+The 2026-11-25 request authorized backend foundation implementation and local verification, with no AI features, pushes, merges or deployments. Remaining review decisions apply before the corresponding product/provider/deployment work; no external credentials or purchases are needed for the foundation.
 
 ## Dependency order and release scope
 

@@ -1,6 +1,10 @@
 # System architecture
 
-Status: proposed design, 2026-11-24. This document specifies intended behavior, not existing capabilities.
+Status: target design, originally 2026-11-24. Backend infrastructure was added on 2026-11-25; domain/AI workflows below remain planned. See [implemented scope](PHASE_1_IMPLEMENTATION.md).
+
+## Implemented foundation naming
+
+The current backend follows the user's implementation request: `feedback` maps to this design's proposed `evaluations` module, `ai_services` maps to `ai`, and Redis replaces the initial Valkey proposal. The ten current apps are accounts, resumes, jobs, interviews, feedback, knowledge, learning, analytics, ai_services and common. Separate skills, workflows, media and audit apps are deferred until their domain features need them. The directory tree and topology below describe the broader target, not an inventory of current files. PostgreSQL/pgvector, Redis/Celery, settings, health, schema, logging and tooling are implemented; the planned outbox, React client and identity/privacy workflows are not yet implemented.
 
 ## Goals and boundaries
 

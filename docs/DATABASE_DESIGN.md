@@ -1,6 +1,6 @@
 # Database design
 
-Status: proposed PostgreSQL relational model; no migrations exist. App ownership follows [architecture](ARCHITECTURE.md). Use PostgreSQL 17 with pgvector, subject to deployment compatibility testing.
+Status: target PostgreSQL relational model. As of 2026-11-25, `accounts.0001_initial` implements the minimal UUID/email User (including case-insensitive uniqueness), and `knowledge.0001_enable_vector` enables pgvector. Django also supplies auth/admin/session tables. All other domain tables below remain proposed. App naming maps are in [architecture](ARCHITECTURE.md); [verification](PHASE_1_IMPLEMENTATION.md) records the test database versions. Compose targets PostgreSQL 17 with pgvector.
 
 ## Conventions and ownership
 

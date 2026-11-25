@@ -1,47 +1,182 @@
 # AI Interview Preparation Platform
 
-**Status: architecture proposal for review; no application features implemented.**
+**Status: Phase 1 backend foundation implemented; product and AI features remain planned.**
 
-This project proposes a production-inspired interview practice platform built with Django REST Framework, React/TypeScript, PostgreSQL/pgvector, configurable language models, retrieval-augmented generation (RAG), speech processing, and bounded LangGraph workflows. It is a coaching product; scores are formative feedback, not hiring decisions or verified measures of employability.
+A modular Django REST Framework backend for a future interview preparation platform. The eventual product includes resume/JD analysis, personalized text/voice interviews, grounded feedback, learning plans and analytics. This repository currently provides infrastructure and a minimal identity schema, not those workflows.
 
-## Repository inspection
+## Implemented foundation
 
-Inspected `C:\interview-plat` on 2026-11-24, including hidden entries and a recursive listing. The workspace was empty: no source code, dependency manifests, migrations, documentation, AGENTS.md, or Git repository were present. These documents establish a greenfield design. No framework scaffolding, dependencies, infrastructure, or database objects have been created.
+- Ten Django apps: `accounts`, `resumes`, `jobs`, `interviews`, `feedback`, `knowledge`, `learning`, `analytics`, `ai_services`, `common`.
+- Development, testing and fail-closed production settings with environment-based configuration.
+- UUID email-based custom User with case-insensitive database uniqueness, established before dependent migrations.
+- PostgreSQL and a migration enabling pgvector; Redis cache/broker/results; a Celery infrastructure probe task.
+- JSON logging with request IDs, session/CSRF/CORS defaults, health checks and OpenAPI/Swagger.
+- Non-root multi-stage Dockerfile, local Compose stack, pinned dependencies, Ruff, Pytest, pre-commit and GitHub Actions.
 
-## Proposed scope
+AI, interview/upload APIs, authentication/profile workflows, frontend, durable domain jobs/outbox, and privacy workflows remain future work. The original roadmap's broader “Foundation and identity” phase is therefore partly pending. See [implementation scope and verification](docs/PHASE_1_IMPLEMENTATION.md).
 
-- Email authentication, account recovery, profiles, and privacy controls.
-- PDF/DOCX resume ingestion, evidence-backed analysis, job-description analysis, and skill gaps.
-- Personalized technical, behavioral, HR, and system-design practice.
-- Adaptive questions and bounded follow-ups with text and turn-based voice answers.
-- RAG-grounded technical evaluation; rubric-based behavioral coaching with explicit uncertainty.
-- Learning plans, performance history, and comparable progress metrics.
+## Repository layout
 
-Start with a **modular monolith**: one backend codebase, one relational database, and the same backend image running API and worker processes. React is a separate build deployed behind the same public origin. Background workers are process roles, not microservices.
+```text
+backend/
+  manage.py
+  config/                  # URLs, Celery, WSGI/ASGI, settings/
+  apps/                    # ten independently registered domain modules
+  tests/                   # security, schema, database, HTTP and worker checks
+  Dockerfile               # development and production targets
+requirements/              # exact runtime and development dependency closures
+scripts/                   # safe local environment setup, native tests, hook checks
+.github/workflows/ci.yml
+compose.yaml
+docs/
+```
 
-## Design documents
+## Prerequisites
+
+Use Windows PowerShell from the repository root. Install Git, Python 3.12 or 3.14 and Docker Desktop with Linux containers and Compose **2.24+**. Start Docker Desktop; `docker version` must show both client and server. Host verification used Python 3.14.8; Docker pins Python 3.14.10. CI targets Python 3.12 and 3.14. Run Redis and Celery in Linux containers for normal Windows development; native Windows Celery is not a supported production configuration.
+
+Compose pins PostgreSQL 17/pgvector 0.8.7 and Redis 7.4.12. Django 5.2.19 LTS, DRF 3.18.1, Celery 5.7.0 and psycopg 3.3.9 are principal resolved versions. Runtime and development dependency closures have exact pins; refresh them together with tests and security review. Package hashes and image digests are not locked yet. Release references: [Django](https://www.djangoproject.com/download/), [DRF](https://www.django-rest-framework.org/community/release-notes/), [Celery](https://docs.celeryq.dev/en/stable/getting-started/introduction.html).
+
+## Run with Docker Compose
+
+```powershell
+Set-Location C:\interview-plat
+python scripts/initialize_env.py
+docker compose config --quiet
+docker compose up --build --wait --wait-timeout 240 api worker
+```
+
+The initializer generates local credentials from `.env.example`, never prints them, and refuses to overwrite `.env`. If the file exists, review/use it and skip initialization. `.env` is ignored by Git and excluded from image builds. These credentials are for local development only.
+
+Compose waits for database/Redis health and runs the one-off `migrate` service before API/worker startup. Both processes use the same backend codebase/image. Host ports bind only to loopback; named database/Redis volumes survive normal shutdown.
+
+```powershell
+Invoke-RestMethod http://localhost:8000/health/live/
+Invoke-RestMethod http://localhost:8000/health/ready/
+Start-Process http://localhost:8000/api/v1/docs/
+docker compose ps -a
+docker compose logs --tail 100 api worker migrate
+```
+
+Expected responses: `{"status":"alive"}` and `{"status":"ready"}`. Swagger and `/api/v1/schema/` are development/testing-only; Swagger assets are packaged locally with drf-spectacular-sidecar. Production disables API docs and Django admin until proper staff MFA/access controls exist.
+
+```powershell
+docker compose exec api python manage.py check
+docker compose exec api python manage.py showmigrations
+docker compose exec api python manage.py makemigrations --check --dry-run
+docker compose exec api python manage.py shell -c "from apps.common.tasks import infrastructure_probe; print(infrastructure_probe.delay().get(timeout=20))"
+# Uses default POSTGRES_USER/POSTGRES_DB names; adjust if you changed them:
+docker compose exec db psql -U interview -d interview_platform -c "SELECT extname, extversion FROM pg_extension;"
+
+# Full suite, including real worker round trip; keep the worker running:
+docker compose --profile test run --rm test python -m pytest
+# Default test command excludes worker integration and prints coverage:
+docker compose --profile test run --rm test
+
+# Stop while retaining development data:
+docker compose down
+```
+
+Only the infrastructure probe task exists, with no public dispatch endpoint. Redis persistence is a development convenience; future user/billable tasks require the planned PostgreSQL jobs/outbox and deduplication layer.
+
+## Native API and tooling on Windows
+
+Keep PostgreSQL/pgvector and Redis in Compose and run Django/tooling in a virtual environment. Do not simultaneously run the native and container API on port 8000.
+
+```powershell
+Set-Location C:\interview-plat
+python scripts/initialize_env.py  # Skip if .env already exists.
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements/dev.txt
+.\.venv\Scripts\python.exe -m pip check
+docker compose up -d --wait db redis
+.\.venv\Scripts\python.exe backend/manage.py migrate --noinput
+.\.venv\Scripts\python.exe backend/manage.py check
+.\.venv\Scripts\python.exe scripts/run_tests.py -m "not integration"
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
+.\.venv\Scripts\python.exe backend/manage.py runserver 127.0.0.1:8000
+```
+
+Development automatically reads root `.env` without overriding shell variables. Testing and production settings do not automatically read it. `scripts/run_tests.py` explicitly loads local infrastructure URLs and selects testing settings; CI injects URLs directly. Pytest creates/destroys a separate `test_<database-name>` PostgreSQL database and needs permission to create test databases. No SQLite fallback exists. Never point local/test configuration at a production database.
+
+For all native tests with a Linux worker, start `docker compose up --build --wait worker` in another terminal, then run `.\.venv\Scripts\python.exe scripts/run_tests.py`. To export OpenAPI:
+
+```powershell
+New-Item -ItemType Directory -Force reports | Out-Null
+.\.venv\Scripts\python.exe backend/manage.py spectacular --file reports/openapi.yaml --validate --fail-on-warn
+```
+
+Local pre-commit hooks use the active Python environment. Activate the venv, or prepend it to this terminal's PATH without changing execution policy:
+
+```powershell
+$env:PATH = (Join-Path (Get-Location) '.venv\Scripts') + ';' + $env:PATH
+python -m pre_commit install
+python -m pre_commit run --all-files
+# Also check new files before staging:
+$files = git ls-files --cached --others --exclude-standard
+python -m pre_commit run --files $files
+```
+
+Hooks check Ruff lint/format, conflict markers and accidentally selected `.env` files. This is not a comprehensive secret scanner. Hook installation is a developer action; CI checks independently. Tests do not run on every commit.
+
+## Configuration and production boundaries
+
+| Variable | Purpose |
+| --- | --- |
+| `DJANGO_SETTINGS_MODULE` | `config.settings.development`, `.testing` or `.production` |
+| `DJANGO_SECRET_KEY` | Required; independent secret per deployment |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated hosts without schemes; explicit production hosts required |
+| `DATABASE_URL` | PostgreSQL DSN; Compose overrides it using `POSTGRES_*` and container hostname |
+| `REDIS_URL` | Cache/readiness, local Redis DB 0 |
+| `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` | Broker/results, local Redis DBs 1/2 |
+| `DJANGO_CORS_ALLOWED_ORIGINS` | Explicit frontend origins; empty for same-origin production |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Exact trusted unsafe-request origins; does not replace CSRF tokens |
+| `DJANGO_ENABLE_API_DOCS` | Development switch; production always disables docs |
+| `DJANGO_LOG_LEVEL` | Structured log threshold, default INFO |
+| `POSTGRES_PORT`, `REDIS_PORT`, `API_PORT` | Published loopback ports; also update native DSNs if changed |
+| `DATABASE_SSLMODE`, `PGSSLROOTCERT` | Production database certificate verification and CA path |
+| `DJANGO_TRUST_PROXY_SSL_HEADER` | False by default; enable only behind a trusted header-sanitizing TLS proxy |
+
+Production requires verified database TLS (`verify-full` default), `rediss://` with certificate validation, a strong secret, explicit allowed hosts and HTTPS configured origins. DEBUG is always off. Secure session/CSRF cookies, HTTPS redirect, HSTS and a restrictive API CSP are enabled. Do not expose development's unauthenticated Redis, superuser database role or `runserver` publicly. Compose explicitly selects development settings; changing only `.env` does not make it a production deployment.
+
+The production Docker target uses Gunicorn and a non-root user. A future release pipeline must inject secrets, run `python manage.py check --deploy --fail-level WARNING`, collect static assets with `python manage.py collectstatic --noinput`, apply controlled migrations, and provision TLS, least-privilege roles, backups and monitoring. The migration role needs extension-creation permission or a DBA must preinstall vector; production runtime workers must not be superusers. No production deployment exists.
+
+Liveness touches no infrastructure. Readiness checks PostgreSQL, vector and core account/session tables plus the configured cache Redis connection. It does not certify every future migration, broker URL or worker; use the separate probe and monitoring. Health checks never invoke AI providers.
+
+Logs retain fixed events, request IDs, status, method, route name, duration and exception type. They omit bodies, credentials, raw URLs/query strings, SQL and exception messages/tracebacks. Third-party messages become `library_event`; their logger names remain available for diagnostics. Any future detailed diagnostic channel must preserve privacy.
+
+## Troubleshooting
+
+| Symptom | Action |
+| --- | --- |
+| Docker command missing / no engine | Install/start Docker Desktop and reopen PowerShell; a stale `docker-desktop` WSL distribution alone is insufficient |
+| `DisallowedHost` | Add the exact hostname to `DJANGO_ALLOWED_HOSTS`; recreate containers after environment changes |
+| Readiness 503 | Inspect `docker compose ps -a` and migrate/API logs; verify database/vector migration and Redis |
+| Vector extension unavailable | Use the pgvector image, not plain PostgreSQL; verify extension support and migration privileges |
+| Database auth fails after `.env` edits | Existing volume retains original credentials; deliberately update the role or restore prior credentials. Container recreation does not reset the database |
+| Native tests cannot authenticate | Use `scripts/run_tests.py`; plain Pytest does not automatically load `.env` |
+| Port already in use | Adjust published ports and native DSNs, or stop the other local process |
+| `db` / `redis` unresolved on Windows | Container hostnames only work inside Compose; native URLs use `127.0.0.1` |
+| CORS / CSRF rejection | Configure exact scheme/host/port, send session credentials and CSRF token; keep CSRF enabled |
+| Probe timeout | Confirm worker consumes `default`, URLs match API, and worker can reach PostgreSQL |
+| Hook cannot import Ruff | Activate/prepend `.venv\Scripts` to PATH and install development requirements |
+| Production static errors | Run collectstatic with production settings before serving |
+| Stale test database | Confirm it is disposable, then use `--reuse-db` or deliberately resolve that test database; never reset the primary DB |
+
+Normal shutdown is `docker compose down`. `docker compose down --volumes` **deletes all local database/Redis data** and is only for an intentional disposable reset, not routine troubleshooting.
+
+## Verification and documentation
+
+On 2026-11-25, migrations, Django checks, migration-drift checks, OpenAPI validation, Ruff, pre-commit and all **36 tests passed**. Real HTTP health/schema/Swagger and a Celery round trip were verified. Local temporary services were PostgreSQL 18.7/pgvector 0.8.1 and Redis 8.4.2; the Windows diagnostic worker used the solo pool. The exact Compose PostgreSQL 17/pgvector 0.8.7, Redis 7.4.12 and Linux prefork combination remains a CI/manual gate. Compose configuration validated, but image builds/startup and GitHub-hosted CI were not executed locally. See the [full verification report](docs/PHASE_1_IMPLEMENTATION.md).
 
 | Document | Purpose |
 | --- | --- |
-| [Architecture](docs/ARCHITECTURE.md) | Modules, AI/speech workflows, dependencies, infrastructure, sizing and costs |
-| [Database design](docs/DATABASE_DESIGN.md) | Tables, relationships, ownership, constraints, vector indexes and lifecycle |
-| [API design](docs/API_DESIGN.md) | Versioned contracts, authentication, asynchronous jobs, examples and errors |
-| [Development roadmap](docs/DEVELOPMENT_ROADMAP.md) | Ordered phases, dependencies, review gates, risks and acceptance criteria |
-| [Security](docs/SECURITY.md) | Threat model, permissions, consent, retention and operational controls |
-| [Testing strategy](docs/TESTING_STRATEGY.md) | Automated verification, AI benchmarks, performance targets and release gates |
+| [Architecture](docs/ARCHITECTURE.md) | Module boundaries, AI design, infrastructure and illustrative cost model |
+| [Database design](docs/DATABASE_DESIGN.md) | Proposed domain schema; User and vector migration currently implemented |
+| [API design](docs/API_DESIGN.md) | Planned product APIs; current surface is health/development docs |
+| [Development roadmap](docs/DEVELOPMENT_ROADMAP.md) | Phases, dependencies, risks and gates |
+| [Security](docs/SECURITY.md) | Target security/privacy requirements and implementation boundaries |
+| [Testing strategy](docs/TESTING_STRATEGY.md) | Phase-specific acceptance strategy |
 
-## Starting assumptions and decisions
-
-English-first, adult individual learners, one deployment region, no organization tenancy or billing in the initial release. Plan for 100 monthly active learners and 1,000 completed sessions/month; validate with load tests before promising capacity. An interview is bounded to 5–20 questions, up to two follow-ups per primary question within that total, and a 60-minute maximum duration.
-
-Use same-origin server-side session authentication with CSRF protection. Prefer open-source PostgreSQL, pgvector, Valkey, Celery, sentence-transformers and faster-whisper where operationally practical. Hosted inference is optional and explicitly disclosed. Model weights and voice licenses need separate review. Provider choice must not alter public API schemas or silently move personal data between vendors.
-
-The first usable milestone is a secure **text interview vertical slice** with resume/JD analysis and grounded evaluations. Voice, LangGraph orchestration, and richer analytics follow in gated phases. No Kubernetes, service mesh, dedicated vector database, multi-agent service fleet, code execution sandbox, live video, emotion detection, or full-duplex voice is planned initially.
-
-## Implementation and review
-
-There are no runnable setup commands yet. After design review, phase 1 will add the backend/frontend skeleton, lockfiles, local Compose stack, CI, migrations and environment examples. Never commit real credentials or personal resumes.
-
-Review priorities are deployment region and retention policy, expected concurrency, corpus licensing, rubric validity, hosted versus local inference, and the monthly budget. Proposed defaults and measurable gates are documented so implementation can proceed after review without inventing core contracts.
-
-Planning estimates and external references were checked on 2026-11-24. Prices are USD planning figures, not vendor quotes; see [cost assumptions](docs/ARCHITECTURE.md#operational-cost-model).
+Initial inspection on 2026-11-24 found an empty workspace without Git. Documentation was subsequently committed before implementation began. This work has not pushed, merged or deployed any changes.

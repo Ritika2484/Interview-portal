@@ -1,6 +1,6 @@
 # REST API design
 
-Status: proposed contracts, not implemented endpoints. Base path `/api/v1/`; JSON over HTTPS, UUID identifiers and UTC ISO-8601 timestamps. Same-origin React client uses Django session cookies. A generated OpenAPI 3 schema and typed TypeScript client are phase 1 deliverables, not existing files.
+Status: target contracts. As of 2026-11-25, only `/health/live/`, `/health/ready/` and development/testing `/api/v1/schema/` and `/api/v1/docs/` exist. Product endpoints below remain planned. A validated OpenAPI schema can be generated from the current backend; no TypeScript client exists yet. Base path `/api/v1/`; JSON over HTTPS, UUID identifiers and UTC ISO-8601 timestamps. The future same-origin React client will use Django session cookies. See [implemented scope](PHASE_1_IMPLEMENTATION.md).
 
 ## Common contract
 

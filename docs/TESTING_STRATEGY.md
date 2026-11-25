@@ -1,6 +1,6 @@
 # Testing strategy and acceptance evidence
 
-Status: future implementation requirements. No application exists and no runtime tests have been executed. Current verification covers document completeness, links and consistency only. Quality targets below are proposed gates, not measured performance.
+Status updated 2026-11-25: backend foundation tests exist and all 36 passed, including real PostgreSQL/pgvector and a Redis/Celery worker round trip. See [verification evidence and environment limitations](PHASE_1_IMPLEMENTATION.md). Product/AI quality gates and performance targets below remain future requirements, not measured product capabilities; the broader Phase 1 identity/frontend/outbox gates remain pending.
 
 ## Test layers and tools
 

@@ -1,8 +1,10 @@
 # Development roadmap and risk register
 
-Status updated 2026-11-25: architecture documentation exists and the requested Phase 1 backend infrastructure subset is implemented. The original Phase 1 additionally includes frontend, authentication/profile, outbox and privacy workflows, which remain pending; it is not marked fully complete. See [implementation and verification](PHASE_1_IMPLEMENTATION.md). Deliver one safe vertical slice at a time; keep application and AI providers independently testable. Estimates below remain planning ranges for the broader platform, not delivery commitments. Rough total is 18–28 engineering weeks plus review/procurement uncertainty.
+Status updated 2026-11-26: architecture, backend foundation, and the user's Phase 2 authentication/profile/current-data-deletion milestone are implemented. Frontend, generic domain outbox and export remain pending, so the original broader foundation roadmap gate is not fully complete. See [authentication verification](AUTHENTICATION.md) and [foundation history](PHASE_1_IMPLEMENTATION.md). Estimates below remain planning ranges for the broader platform, not delivery commitments. Rough total is 18–28 engineering weeks plus review/procurement uncertainty.
 
 ## Phase plan
+
+Delivery update 2026-11-26: the user requested **Phase 2 = Authentication and User Management**. That milestone is implemented and verified; [authentication documentation](AUTHENTICATION.md) records its API and migration. This delivery sequence takes precedence over the original table's numbering. Resume/JD analysis, frontend, generic AI outbox, export and all AI capabilities remain future work; the original Phase 2 resume/JD row is not claimed complete.
 
 Each phase requires the automated and manual evidence in [testing strategy](TESTING_STRATEGY.md). Do not advance by marking checklist items complete without observed results.
 

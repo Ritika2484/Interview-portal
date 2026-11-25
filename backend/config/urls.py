@@ -1,11 +1,12 @@
 from django.conf import settings
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.common.health import LivenessView, ReadinessView
 
 urlpatterns = [
+    path("api/v1/", include("apps.accounts.urls")),
     path("health/live/", LivenessView.as_view(), name="health-live"),
     path("health/ready/", ReadinessView.as_view(), name="health-ready"),
 ]

@@ -12,6 +12,8 @@ x-backend: &backend
     REDIS_URL: redis://redis:6379/0
     CELERY_BROKER_URL: redis://redis:6379/1
     CELERY_RESULT_BACKEND: redis://redis:6379/2
+    EMAIL_HOST: mailpit
+    EMAIL_PORT: '1025'
   volumes:
     - ./backend:/app/backend
   init: true
@@ -78,12 +80,35 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      beat:
+        condition: service_started
+      mailpit:
+        condition: service_started
     healthcheck:
       test: [CMD-SHELL, 'celery -A config inspect ping --destination "worker@$${HOSTNAME}" --timeout 3 | grep -q pong']
       interval: 30s
       timeout: 8s
       start_period: 20s
       retries: 5
+
+  beat:
+    <<: *backend
+    command: [celery, -A, config, beat, --loglevel=INFO, --schedule=/tmp/celerybeat-schedule]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.34.0
+    ports:
+      - 127.0.0.1:${MAILPIT_WEB_PORT:-8025}:8025
+      - 127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025
+    environment:
+      MP_MAX_MESSAGES: '100'
+      MP_MAX_AGE: 1h
+      MP_DISABLE_VERSION_CHECK: 'true'
 
   test:
     <<: *backend

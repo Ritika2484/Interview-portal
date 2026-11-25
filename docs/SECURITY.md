@@ -1,6 +1,6 @@
 # Security, authorization and privacy
 
-Status updated 2026-11-25: target implementation/release requirements. Backend settings now configure session/CSRF/CORS defaults, production TLS/cookie guards, private DRF defaults and minimized logs; admin/docs are disabled in production. Authentication/privacy workflows, staff MFA and production operations remain pending. See [current boundaries](PHASE_1_IMPLEMENTATION.md). Defaults below remain product proposals; deployment jurisdiction, contracts and legal obligations require review before public launch. This document does not assert regulatory certification.
+Status updated 2026-11-26: authentication, session revocation, owner profiles and current-data deletion are implemented alongside production TLS/cookie guards and minimized logs. Admin/docs remain disabled in production; administrator API login is blocked pending MFA. Staff MFA, export/provider-consent workflows, backup erasure replay and production operations remain pending. See [current account boundaries](AUTHENTICATION.md). Other requirements below remain target design; deployment jurisdiction, contracts and legal obligations require review before public launch. This document does not assert regulatory certification.
 
 ## Threat model and trust boundaries
 
@@ -9,6 +9,8 @@ Protect credentials, resumes, job descriptions, voice recordings, transcripts, i
 Primary threats: account takeover, enumeration, cross-user object access, malicious documents/archives, prompt injection, unauthorized retrieval, leaked signed URLs, XSS/CSRF, SSRF, supply-chain compromise, stolen provider credentials, resource exhaustion, task replay, and data retained after deletion. Controls apply to both synchronous API routes and asynchronous workers; moving work into a queue never bypasses ownership checks.
 
 ## Authentication
+
+Implementation update 2026-11-26: [Phase 2](AUTHENTICATION.md) implements registration/verified login/recovery, tracked 12-hour idle/seven-day absolute sessions, hashed single-use tokens, shared atomic Redis limits, owner profiles, role checks and current-data erasure. Staff MFA, provider consent/export, backup erasure replay and production operations remain pending. Production admin stays disabled and administrator API login is blocked until MFA exists; no security control was relaxed to expose it. Policy acceptance is currently recorded at registration; optional provider consent endpoints are not implemented.
 
 Use a custom Django User with case-insensitive unique email from the first migration. Verify email before accepting personal documents or running inference. Hash passwords with Django's Argon2id hasher configured first, with supported fallback hashers for upgrades. Passwords: 12–128 characters, Django common/similarity validators, paste and password managers allowed, no arbitrary periodic resets. Never log passwords or reset links.
 

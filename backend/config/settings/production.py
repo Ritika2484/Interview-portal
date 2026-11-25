@@ -44,8 +44,22 @@ SECURE_HSTS_PRELOAD = True
 if env.bool("DJANGO_TRUST_PROXY_SSL_HEADER", default=False):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_HOST = env("EMAIL_HOST")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = True
+account_link_url = urlsplit(AUTH_PUBLIC_BASE_URL)
+if (
+    account_link_url.scheme != "https"
+    or not account_link_url.hostname
+    or account_link_url.username
+    or account_link_url.password
+    or account_link_url.query
+    or account_link_url.fragment
+):
+    raise ImproperlyConfigured(
+        "Production requires an HTTPS AUTH_PUBLIC_BASE_URL for account links."
+    )
+if DEFAULT_FROM_EMAIL.endswith(".invalid"):
+    raise ImproperlyConfigured("Production requires a deliverable DEFAULT_FROM_EMAIL.")

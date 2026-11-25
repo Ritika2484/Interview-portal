@@ -56,7 +56,13 @@ Because a Docker engine was unavailable, real local services ran in an isolated 
 
 The exact Compose stack instead pins **PostgreSQL 17/pgvector 0.8.7, Redis 7.4.12 and a Linux prefork worker**. Its configuration validates, but image builds and container startup could not run locally. GitHub CI contains a Python 3.12/3.14 database/worker matrix and a separate complete Compose build/start/test job; those hosted workflows have not run because nothing was pushed. Native Python 3.12, production TLS certificate negotiation, load/soak behavior, backups/recovery, staff MFA and production operations remain unverified. Package hashes/image digests and comprehensive secret/dependency vulnerability scanning remain future hardening work.
 
-## Manual verification before accepting the container stack
+## Follow-up verification: 2026-11-26
+
+The user's Docker output confirms successful builds of the pinned images, completed migrations and **36 passing tests in the Linux Compose container**, including the real Celery integration test. Initial API startup failed because host port 8000 was already occupied; it was a host binding conflict, not an image build, migration or test failure.
+
+Local `.env` was changed from `API_PORT=8000` to `API_PORT=8001` after verifying that 8001 was available. Using the host Docker CLI, `docker compose up --wait --wait-timeout 240 api worker` then completed successfully with both API and worker healthy. HTTP checks at `127.0.0.1:8001` returned `{"status":"alive"}`, `{"status":"ready"}` and Swagger status 200. Internal container port 8000, dependencies, database data and the process already using host port 8000 were left unchanged. The local stack remains running for the user. This resolves the earlier local Compose build/startup verification gap; GitHub-hosted CI and production operations remain unverified.
+
+## Container verification checklist
 
 1. Follow the [PowerShell setup](../README.md#run-with-docker-compose) on Docker Desktop with a running Linux engine.
 2. Run `docker compose up --build --wait --wait-timeout 240 api worker`; verify db/redis/API/worker are healthy and migrate exited 0.

@@ -1,6 +1,6 @@
 # REST API design
 
-Status: target contracts. As of 2026-11-25, only `/health/live/`, `/health/ready/` and development/testing `/api/v1/schema/` and `/api/v1/docs/` exist. Product endpoints below remain planned. A validated OpenAPI schema can be generated from the current backend; no TypeScript client exists yet. Base path `/api/v1/`; JSON over HTTPS, UUID identifiers and UTC ISO-8601 timestamps. The future same-origin React client will use Django session cookies. See [implemented scope](PHASE_1_IMPLEMENTATION.md).
+Status updated 2026-11-26: health, authentication, owner profiles and current-data deletion are implemented, with development/testing OpenAPI/Swagger. Interview/resume/AI/learning/export/provider-consent endpoints below remain target contracts. A validated OpenAPI schema can be generated; no TypeScript client exists yet. Base path `/api/v1/`; JSON over HTTPS, UUID identifiers and UTC ISO-8601 timestamps. Session-cookie authentication is implemented. See [authentication scope](AUTHENTICATION.md) and [foundation history](PHASE_1_IMPLEMENTATION.md).
 
 ## Common contract
 
@@ -30,10 +30,12 @@ Asynchronous success returns 202 plus `Location: /api/v1/operations/{id}/` and `
 
 ## Authentication and account contracts
 
+Implemented 2026-11-26 unless a row below explicitly says planned. [Authentication guide](AUTHENTICATION.md) gives payloads and PowerShell examples. All unsafe routes, including anonymous authentication, require CSRF. Responses contain no raw login bearer token: the server sets an HttpOnly session cookie. Common errors, cookie security and CSRF/If-Match parameters appear in generated OpenAPI. Current profiles use the requested field names below rather than earlier proposed aliases.
+
 | Method / route | Request | Success / permission |
 | --- | --- | --- |
 | GET `/auth/csrf/` | none | 200 `{csrf_token}` plus CSRF cookie; public, no cache |
-| POST `/auth/register/` | email, password, display_name, accepted_policy_version | 202 generic message; public; creates inactive/unverified account and verification email asynchronously |
+| POST `/auth/register/` | email, password, display_name, accepted_policy_version | 202 generic message; public; creates unverified candidate; durable email intent; unverified accounts cannot log in |
 | POST `/auth/verify-email/` | token | 200 `{verified:true}`; public, single-use hashed token |
 | POST `/auth/resend-verification/` | email | 202 generic message; public |
 | POST `/auth/login/` | email, password | 200 `{user:{id,email,display_name},session_expires_at}`; public + CSRF; session cookie rotated |
@@ -42,14 +44,18 @@ Asynchronous success returns 202 plus `Location: /api/v1/operations/{id}/` and `
 | POST `/auth/password-reset/` | email | 202 generic message; public, enumeration resistant |
 | POST `/auth/password-reset/confirm/` | token, new_password | 204; public; revoke existing sessions |
 | POST `/auth/reauthenticate/` | password | 204; refresh server-side recent-auth marker |
-| GET `/me/` | none | 200 User + Profile + consent states |
-| PATCH `/me/` | display_name, timezone, locale, target_role, seniority, preferences | 200 versioned Profile; If-Match |
-| POST `/me/consents/` | purpose, granted:boolean, policy_version | 201 consent event; deny dependent processing if revoked |
-| POST `/me/exports/` | none | 202 export operation; recent auth |
-| DELETE `/me/` | `{confirmation:"delete-account"}` | 202 deletion operation; recent auth; immediately revoke sessions |
-| GET `/privacy-requests/{id}/` | none | 200 owner request; after deletion track via limited signed receipt, not normal session |
+| GET `/me/` | none | 200 User + nested Profile + ETag; optional provider consent remains future |
+| PATCH `/me/` | display_name, timezone, target_job_role, experience_level, technical_skills, interview_preferences, preparation_goals, preferred_interview_language | 200 User with nested versioned Profile; CSRF + If-Match |
+| POST `/me/consents/` | purpose, granted:boolean, policy_version | Planned; registration currently records policy acceptance only |
+| POST `/me/exports/` | none | Planned; no export endpoint yet |
+| DELETE `/me/` | `{confirmation:"delete-account"}` | 202 already-completed current-data erasure receipt; recent auth; revoke sessions |
+| DELETE `/me/personal-data/` | `{confirmation:"delete-personal-data"}` | 202 completed receipt; clears profile/token/email artifacts, keeps login identity/policy acceptance, revokes sessions |
+| GET `/privacy-requests/{id}/` | X-Deletion-Receipt header | 200 content-free status; missing/wrong/expired proof returns 404; hashed receipt expires in 30 days |
+| GET `/admin/account-stats/` | none | Administrator-only aggregate count; production access disabled pending staff MFA |
 
 All unsafe cookie-based requests, including public login/register/reset, require a valid CSRF token and origin validation. Registration does not log in. Password length 12–128 plus Django validators; email max 254 characters, display_name max 100, IANA timezone validated. Email changes and external OAuth are deferred; no hidden email change in PATCH `/me/`.
+
+Current privacy commands perform small synchronous database erasures and return a terminal receipt (id, kind, state, timestamps, receipt and status_url); they do not return a generic operation_id. Other async/idempotency contracts remain future domain design. GET /me/ returns id/email/role/email_verified_at plus nested profile and an ETag. JWT refresh is unnecessary: idle session renewal is bounded by seven-day absolute expiry. Logout is CSRF-protected and idempotent even for an anonymous client. See the authentication guide for profile bounds and rate limits.
 
 ## Resumes, job descriptions and gaps
 

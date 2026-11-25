@@ -50,6 +50,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.accounts.middleware.AccountSessionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -89,6 +90,24 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 12 * 60 * 60
+AUTH_SESSION_IDLE_SECONDS = 12 * 60 * 60
+AUTH_SESSION_ABSOLUTE_SECONDS = 7 * 24 * 60 * 60
+AUTH_REAUTH_SECONDS = 10 * 60
+AUTH_VERIFY_TOKEN_SECONDS = 24 * 60 * 60
+AUTH_RESET_TOKEN_SECONDS = 30 * 60
+AUTH_POLICY_VERSION = "2026-11-26"
+AUTH_PUBLIC_BASE_URL = env("AUTH_PUBLIC_BASE_URL", default="http://localhost:5173").rstrip("/")
+AUTH_ADMIN_LOGIN_ENABLED = False
+AUTH_RATE_PREFIX = "interview-auth-v1"
+AUTH_RATE_LIMITS = {
+    "login": [(30, 60), (5, 60)],
+    "register": [(20, 3600), (3, 3600)],
+    "email": [(20, 3600), (3, 3600)],
+    "token": [(60, 60), (30, 60)],
+    "reauthenticate": [(30, 60), (5, 60)],
+    "authenticated": [(300, 60), (120, 60)],
+}
+CSRF_FAILURE_VIEW = "apps.accounts.errors.csrf_failure"
 CSRF_COOKIE_HTTPONLY = False  # The future browser client must read/send the CSRF token.
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
@@ -114,7 +133,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.accounts.authentication.VerifiedSessionAuthentication"
+    ],
+    "EXCEPTION_HANDLER": "apps.accounts.errors.account_exception_handler",
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -153,6 +175,10 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 300, "socket_timeout": 
 CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {"socket_timeout": 3}
 CELERY_RESULT_EXPIRES = 3600
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_BEAT_SCHEDULE = {
+    "auth-email-outbox": {"task": "apps.accounts.tasks.process_auth_emails", "schedule": 10.0},
+    "auth-record-retention": {"task": "apps.accounts.tasks.prune_auth_records", "schedule": 3600.0},
+}
 CELERY_WORKER_REDIRECT_STDOUTS = False
 CELERY_TASK_SEND_SENT_EVENT = False
 
@@ -171,6 +197,8 @@ STORAGES = {
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@example.invalid")
+EMAIL_TIMEOUT = 5
 
 LOGGING = {
     "version": 1,

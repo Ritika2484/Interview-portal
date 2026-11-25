@@ -1,8 +1,10 @@
 # Testing strategy and acceptance evidence
 
-Status updated 2026-11-25: backend foundation tests exist and all 36 passed, including real PostgreSQL/pgvector and a Redis/Celery worker round trip. See [verification evidence and environment limitations](PHASE_1_IMPLEMENTATION.md). Product/AI quality gates and performance targets below remain future requirements, not measured product capabilities; the broader Phase 1 identity/frontend/outbox gates remain pending.
+Status updated 2026-11-26: foundation/account tests exist and all 91 passed, including real PostgreSQL/pgvector, Redis/Celery, authentication, permissions, revocation and deletion. See [account evidence](AUTHENTICATION.md) and [foundation history](PHASE_1_IMPLEMENTATION.md). Product/AI quality gates and performance targets below remain future requirements, not measured product capabilities; frontend, generic outbox and export gates remain pending.
 
 ## Test layers and tools
+
+Phase 2 evidence (2026-11-26): all 91 tests pass natively and in the pinned Linux Compose stack. New tests exercise actual database constraints/migration upgrades, Argon2, CSRF-enforced account flows, verification/reset expiry and reuse, session invalidation, atomic throttles/Redis outage, owner/profile versions, role escalation, privacy receipts and deletion, and concurrent token consumption. A separate synthetic live flow validated SMTP-to-Mailpit via the scheduled worker and erased its test account/messages. [Authentication](AUTHENTICATION.md) contains scope, manual checks and remaining production limitations.
 
 Use pytest/pytest-django for services, ORM invariants, selectors, API and workers; run database-dependent tests against real PostgreSQL with the actual pgvector extension, never SQLite substitutes. Use deterministic provider fakes for normal CI, including malformed responses, latency, cost usage and failures. Contract-test each enabled adapter separately against its provider sandbox or explicit-budget live run. Mocking all provider behavior cannot certify real model quality.
 

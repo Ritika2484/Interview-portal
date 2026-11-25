@@ -25,6 +25,9 @@ def production_environment():
         "REDIS_URL": "rediss://localhost:6379/0",
         "CELERY_BROKER_URL": "rediss://localhost:6379/1",
         "CELERY_RESULT_BACKEND": "rediss://localhost:6379/2",
+        "AUTH_PUBLIC_BASE_URL": "https://app.example.com",
+        "EMAIL_HOST": "smtp.example.com",
+        "DEFAULT_FROM_EMAIL": "no-reply@example.com",
     }
 
 
@@ -52,6 +55,8 @@ def import_production(changes=None, expression="print(s.DEBUG)"):
         {"CELERY_RESULT_BACKEND": "rediss://localhost:6379/2?ssl_cert_reqs=none"},
         {"DATABASE_SSLMODE": "disable"},
         {"DATABASE_URL": "sqlite:///local.sqlite3"},
+        {"AUTH_PUBLIC_BASE_URL": "http://app.example.com"},
+        {"DEFAULT_FROM_EMAIL": "no-reply@example.invalid"},
     ],
 )
 def test_production_rejects_unsafe_configuration(changes):

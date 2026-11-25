@@ -1,6 +1,22 @@
 # Database design
 
-Status: target PostgreSQL relational model. As of 2026-11-25, `accounts.0001_initial` implements the minimal UUID/email User (including case-insensitive uniqueness), and `knowledge.0001_enable_vector` enables pgvector. Django also supplies auth/admin/session tables. All other domain tables below remain proposed. App naming maps are in [architecture](ARCHITECTURE.md); [verification](PHASE_1_IMPLEMENTATION.md) records the test database versions. Compose targets PostgreSQL 17 with pgvector.
+Status updated 2026-11-26: accounts.0001/0002 implement the UUID/email identity and authentication schema below; knowledge.0001 enables pgvector. Django supplies auth/admin/session tables. Other interview/resume/AI/learning tables below remain proposed. App naming maps are in [architecture](ARCHITECTURE.md); [authentication](AUTHENTICATION.md) records current verification. Compose targets PostgreSQL 17 with pgvector.
+
+## Implemented authentication schema (2026-11-26)
+
+Migration accounts.0002 extends the initial User rather than replacing it, preserves identity/password hashes, maps staff roles, backfills profiles, and removes legacy untracked sessions. The tables below are actual Django table names; other domain schemas remain proposals. [Authentication](AUTHENTICATION.md) details lifecycle and API behavior.
+
+| Table | Ownership / fields | Integrity and lifecycle |
+| --- | --- | --- |
+| accounts_user | Existing UUID PK/email/password; adds role and auth_version | Case-insensitive email uniqueness retained; role/staff/superuser consistency; auth_version >=1 |
+| accounts_profile | User UUID is PK/FK; display_name, timezone, target_job_role, experience_level, technical_skills, interview_preferences, preparation_goals, preferred_interview_language, version, updated_at | One-to-one/cascade; JSON arrays for skills/goals and object for preferences; experience enum; version >=1 |
+| accounts_policyacceptance | User FK, policy_version, accepted_at | Unique user/version; cascades on account erasure; retained with identity after profile-only erasure |
+| accounts_authtoken | UUID, User FK, purpose, unique token_hash, created_at, expires_at, consumed_at | Verify/reset purpose enum; expiry >creation; SHA-256 hash only; user-then-token locks enforce single-use |
+| accounts_usersession | Django Session FK/PK, User FK, auth_version, created_at, last_seen_at, absolute_expires_at | Session/owner cascade; expiry >creation; session version checked against account revocation epoch |
+| accounts_authemaildelivery | UUID, User FK, purpose, state, attempts, created_at, next_attempt_at, completed_at | At most one pending intent per owner/purpose; enum constraints; no raw address/body/token; owner cascade |
+| accounts_deletionrequest | UUID, nullable owner FK, kind, receipt_hash, state, created_at, completed_at, expires_at | Account/personal_data enum; terminal completed state; hash unique; owner SET_NULL on account erasure; 30-day receipt |
+
+Email/receipt/token rows and profiles are included in erasure; the minimal account-deletion receipt has no subject identifier after erasure. Clearing personal data while keeping an account deliberately retains basic login identity and policy acceptance. Future private domain tables/storage must join the erasure graph when introduced. The original conceptual accounts_consent/auth_token naming below is target design; provider consents are not yet implemented and the table inventory above is authoritative for this milestone.
 
 ## Conventions and ownership
 
